@@ -14,10 +14,10 @@ OWNER = 871881605
 DATABASE = {
     "host": os.environ.get("POSTGRES_HOST", "postgres"),
     "database": os.environ.get("POSTGRES_DATABASE", "service"),
-    "password": os.environ.get("POSTGRES_PASSWORD", "password"),
-    "user": os.environ.get("POSTGRES_USER", "postgres")
+    "password": os.environ.get("PG_PASSWORD", "password"),
+    "user": os.environ.get("PG_USER", "postgres"),
+    "port": os.environ.get("PG_PORT", 5432)
 }
-
 DATABASE_FOR_TESTING = {
     "host": os.environ.get("POSTGRES_HOST", "localhost"),
     "database": os.environ.get("POSTGRES_DATABASE", "service_test"),

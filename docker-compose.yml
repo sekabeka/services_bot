@@ -9,14 +9,14 @@ services:
   postgres:
     image: postgres:14
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: service
+      - POSTGRES_USER=${PG_USER}
+      - POSTGRES_PASSWORD=${PG_PASSWORD}
+      - POSTGRES_DB=service
     ports:
-      - "5432:5432"
+      - "5434:5434"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-
+    command: -p 5434
   bot:
     build:
       context: .
@@ -48,6 +48,16 @@ services:
     volumes:
       - .:/app
     command: celery -A core.celery_app.celery beat --loglevel=info
+
+  flower:
+    image: mher/flower:latest
+    ports:
+      - 5555:5555
+    environment:
+      CELERY_BROKER_URL: redis://redis
+    depends_on:
+      - worker
+      - redis
 
 volumes:
   postgres_data:
