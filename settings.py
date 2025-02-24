@@ -1,7 +1,8 @@
 import os
+import pytz
 
 from aiogram import types
-from datetime import time
+from datetime import time, timezone
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -11,22 +12,9 @@ START_TIME_OF_WORK, END_TIME_OF_WORK = time(9, 0), time(21, 0)
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 OWNER = 871881605
 
-DATABASE = {
-    "host": os.environ.get("POSTGRES_HOST", "postgres"),
-    "database": os.environ.get("POSTGRES_DATABASE", "service"),
-    "password": os.environ.get("PG_PASSWORD", "password"),
-    "user": os.environ.get("PG_USER", "postgres"),
-    "port": os.environ.get("PG_PORT", 5432)
-}
-DATABASE_FOR_TESTING = {
-    "host": os.environ.get("POSTGRES_HOST", "localhost"),
-    "database": os.environ.get("POSTGRES_DATABASE", "service_test"),
-    "password": os.environ.get("POSTGRES_PASSWORD", "password"),
-    "user": os.environ.get("POSTGRES_USER", "postgres")
-}
-
-CELERY_BROKER_URL = "redis://redis:6379/0"
-TIMEZONE = "Europe/Moscow"
+DATABASE = "data/database.db"
+CELERY_BROKER_URL = "redis://localhost:6379/"
+TIMEZONE = pytz.timezone("Asia/Tomsk")
 
 COMMANDS = [
     types.BotCommand(

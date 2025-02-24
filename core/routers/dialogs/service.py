@@ -2,7 +2,7 @@ import operator
 import core.states as states
 
 from aiogram import F, types
-from datetime import date, datetime
+from datetime import date, datetime, timezone, timedelta
 
 from aiogram_dialog import Dialog, Window, DialogManager
 from aiogram_dialog.widgets.text import (
@@ -22,19 +22,18 @@ from aiogram_dialog.widgets.kbd import (
     PrevPage,
     SwitchTo,
 )
-from core.models import Service, Record
-from core.utils import Booking
-from core.celery_app.tasks import send_to_owner
+
+from core.utils import get_available_bookings, send_to_employee_notify
 from core.buttons import BUTTON_TO_MENU, BUTTON_TO_SERVICES, BUTTON_TO_BACK
 from core.templates import (
     SERVICE_TEMPLATE_LIST,
     SERVICE_TEMPLATE_DATE,
     SERVICE_TEMPLATE_TIME,
     SERVICE_TEMPLATE_CONFIRM,
-    SERVICE_TEMPLATE_COMPLETE
+    SERVICE_TEMPLATE_COMPLETE,
+    SERVICE_EMPLOYEE_TEMPLATE_LIST
 )
-
-
+from core.models import Service, Booking, User
 
 calendar_config = CalendarConfig(
     min_date=date.today(),
@@ -42,9 +41,18 @@ calendar_config = CalendarConfig(
     years_per_page=2,
 )
 
-
 async def getter_services_list(**kwargs):
-    return {"services": Service.select()}
+    services = await Service.all()
+    dialog_manager: DialogManager = kwargs.get("dialog_manager")
+    dialog_manager.dialog_data["services"] = services
+    return {"services": services}
+
+async def getter_employees_list(**kwargs):
+    dialog_manager: DialogManager = kwargs.get("dialog_manager")
+    service = dialog_manager.dialog_data["service"]
+    employees = service.employees
+    dialog_manager.dialog_data["employees"] = employees
+    return {"employees": employees}
 
 
 async def getter_free_intervals(dialog_manager: DialogManager, **kwargs):
@@ -55,18 +63,27 @@ async def on_click_booking_service(
     callback: types.CallbackQuery, button: Button, dialog_manager: DialogManager
 ):
     page = await dialog_manager.find("list_scroll").get_page()
-    service = list(Service.select())[page]
+    service = dialog_manager.dialog_data["services"][page]
     dialog_manager.dialog_data["service"] = service
+
+async def on_click_booking_employee(
+    callback: types.CallbackQuery, button: Button, dialog_manager: DialogManager
+):
+    page = await dialog_manager.find("list_scroll_1").get_page()
+    employee = dialog_manager.dialog_data["employees"][page]
+    dialog_manager.dialog_data["employee"] = employee
 
 
 async def on_click_date_selected(
     callback: types.CallbackQuery, widget, manager: DialogManager, selected_date: date
 ):
     service = manager.dialog_data["service"]
-    duration = service.duration
-    booking = Booking(selected_date, duration)
     manager.dialog_data["selected_date"] = selected_date
-    free_intervals = booking.get_available_bookings()
+    free_intervals = await get_available_bookings(
+        selected_date,
+        service.duration,
+        manager.dialog_data["employee"].id
+    )
     intervals = []
     for i, (start, end) in enumerate(free_intervals):
         _start = start.time().strftime("%H:%M")
@@ -88,22 +105,29 @@ async def on_click_to_confirm(
 async def on_click_save_booking(
     callback: types.CallbackQuery, button: Button, dialog_manager: DialogManager
 ):
-    service = dialog_manager.dialog_data["service"]
     selected_time = dialog_manager.dialog_data["selected_time"]
     selected_date = dialog_manager.dialog_data["selected_date"]
-    user = dialog_manager.event.from_user
-    record = Record.create(
-        service=service,
-        client=user.id,
-        date=datetime.combine(selected_date, selected_time),
+    selected_datetime = datetime.combine(selected_date, selected_time)
+    service = dialog_manager.dialog_data["service"]
+    employee = dialog_manager.dialog_data["employee"]
+    user_id = callback.from_user.id
+    booking = await Booking.add_booking(
+        employee_id=employee.id,
+        service_id=service.id,
+        date=selected_datetime,
+        user_id=(await User.get_or_create(user_id)).id
     )
-    dialog_manager.dialog_data["record"] = record
+    dialog_manager.dialog_data["booking_id"] = booking.id
+    dialog_manager.dialog_data["selected_datetime"] = selected_datetime
     await dialog_manager.switch_to(states.ServiceSG.booking_complete)
-    send_to_owner.delay(
-        id=record.id,
-        title=record.service.title,
-        date=record.date
+
+    await send_to_employee_notify(
+        employee.tg_id,
+        booking.id,
+        service.title,
+        selected_datetime
     )
+
 
 
 dialog = Dialog(
@@ -118,17 +142,47 @@ dialog = Dialog(
         ),
         Row(
             PrevPage(scroll="list_scroll", text=Const("⬅️")),
+            SwitchTo(
+                text=Const("К мастерам"),
+                id="service_booking_employee",
+                state=states.ServiceSG.booking_staff,
+                on_click=on_click_booking_service,
+            ),
             NextPage(scroll="list_scroll", text=Const("➡️")),
-        ),
-        SwitchTo(
-            text=Const("Записаться"),
-            id="service_booking",
-            state=states.ServiceSG.booking,
-            on_click=on_click_booking_service,
         ),
         BUTTON_TO_MENU,
         getter=getter_services_list,
         state=states.ServiceSG.view,
+        parse_mode="HTML",
+    ),
+    Window(
+        Jinja(
+            text="<b>Услуга</b> <i>{{dialog_data.service.title}}</i> 🎈"
+        ),
+        List(
+            Jinja(
+                text=SERVICE_EMPLOYEE_TEMPLATE_LIST
+            ),
+            items="employees",
+            page_size=1,
+            id="list_scroll_1",
+        ),
+        Row(
+            PrevPage(scroll="list_scroll_1", text=Const("⬅️")),
+            SwitchTo(
+                text=Const("Записаться"),
+                id="service_booking",
+                state=states.ServiceSG.booking,
+                on_click=on_click_booking_employee,
+            ),
+            NextPage(scroll="list_scroll_1", text=Const("➡️")),
+        ),
+        Row(
+            BUTTON_TO_BACK,
+            BUTTON_TO_MENU,
+        ),
+        getter=getter_employees_list,
+        state=states.ServiceSG.booking_staff,
         parse_mode="HTML",
     ),
     Window(

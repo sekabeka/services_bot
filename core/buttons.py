@@ -19,10 +19,15 @@ BUTTON_TO_BOOKINGS = Start(
     state=states.BookingViewSG.view
 )
 BUTTON_TO_BACK = Back(
-    text=Const("🔙")
+    text=Const("Назад")
 )
 BUTTON_TO_HELP = Start(
     text=Const("Помощь"),
     id="go_to_help",
     state=states.HelpSG.view
+)
+BUTTON_TO_EXAMPLES = Start(
+    text=Const("Уведомления"),
+    id="go_to_notify",
+    state=states.ExampleSG.about
 )

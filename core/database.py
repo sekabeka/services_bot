@@ -1,54 +1,67 @@
-from datetime import datetime, timedelta
+from sqlalchemy.ext.asyncio import(
+    create_async_engine,
+    async_sessionmaker,
+)
+from sqlalchemy.orm import DeclarativeBase, joinedload
+from sqlalchemy import select
 
-from core.models import Record, Service
+DATABASE_URL = "sqlite+aiosqlite:///data/database.db"
 
-class UserFunc:
-    def __init__(self, event):
-        self.user_id = event.from_user.id
-        self.is_owner = self.is_owner()
+mappings = {
+    "Employee": lambda cls: joinedload(cls.services),
+    "Service": lambda cls: joinedload(cls.employees)
+}
 
-    def is_owner(self):
-        return self.user_id == 22222
+async_engine = create_async_engine(
+    DATABASE_URL, echo=True
+)
 
-def get_records_for_notifications():
-    now = datetime.now()
-    return Record.select().where(
-        (Record.date > now)
-        & (Record.date <= now + timedelta(days=1))
-        & (Record.notified == False)
-    )
+async_session_factory = async_sessionmaker(
+    async_engine,
+    expire_on_commit=False,
+    autoflush=True
+)
 
-def get_records_for_user(user_id):
-    return (
-        Record
-        .select()
-        .join(Service)
-        .where(
-            (Record.client == user_id) &
-            (Record.date >= datetime.now())
-        )
-        .order_by(Record.date.asc())
-    )
+class Base(DeclarativeBase):
+    @classmethod
+    async def all(cls):
+        async with async_session_factory() as session:
+            stmt, options = select(cls), None
+            if cls.__name__ in mappings:
+                options = mappings[cls.__name__](cls)
+                stmt = stmt.options(options)
 
-def get_records_for_owner():
-    return (
-        Record
-        .select()
-        .where(Record.date >= datetime.now())
-        .order_by(Record.date.asc())
-    )
+            result = await session.execute(stmt)
+            if options:
+                return result.unique().scalars().all()
+
+            return result.scalars().all()
+
+    @classmethod
+    async def create(cls, **kwargs):
+        obj = cls(**kwargs)
+        async with async_session_factory() as session:
+            session.add(obj)
+            await session.commit()
+        return obj
+
+    async def update_fields(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+        return self
+
+async def init_database():
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
 
-def get_records_on_date(date=datetime.today()):
-    return (
-        Record
-        .select()
-        .join(Service)
-        .where(
-            (Record.date.month == date.month)
-            & (Record.date.day == date.day)
-            & (Record.date.year == date.year)
-        )
-        .order_by(Record.date.asc())
-    )
+
+
+
+
+
+
+
+
+
 
