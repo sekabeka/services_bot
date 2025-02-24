@@ -2,7 +2,7 @@ from loguru import logger
 from sqlalchemy import select, func
 from sqlalchemy.orm import joinedload
 from aiogram.enums import ParseMode
-from datetime import timedelta, datetime, date
+from datetime import timedelta, datetime
 from intervaltree import IntervalTree, Interval
 
 from core.bot import bot
@@ -136,10 +136,3 @@ async def fetch_bookings(user_id):
             )
         result = await session.execute(query)
         return result.unique().scalars().all()
-
-
-
-
-
-
-

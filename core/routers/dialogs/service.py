@@ -51,6 +51,11 @@ async def getter_employees_list(**kwargs):
     dialog_manager: DialogManager = kwargs.get("dialog_manager")
     service = dialog_manager.dialog_data["service"]
     employees = service.employees
+    for employee_association in service.employee_associations:
+        for employee in employees:
+            if employee.id == employee_association.employee_id:
+                employee.price = employee_association.price
+
     dialog_manager.dialog_data["employees"] = employees
     return {"employees": employees}
 

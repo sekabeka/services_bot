@@ -5,12 +5,15 @@ from sqlalchemy.ext.asyncio import(
 from sqlalchemy.orm import DeclarativeBase, joinedload
 from sqlalchemy import select
 
-DATABASE_URL = "sqlite+aiosqlite:///data/database.db"
-
 mappings = {
-    "Employee": lambda cls: joinedload(cls.services),
-    "Service": lambda cls: joinedload(cls.employees)
+    "Employee": lambda cls: (joinedload(cls.services)),
+    "Service": lambda cls: (
+        joinedload(cls.employees),
+        joinedload(cls.employee_associations)
+    )
 }
+
+DATABASE_URL = "sqlite+aiosqlite:///data/database.db"
 
 async_engine = create_async_engine(
     DATABASE_URL, echo=True
@@ -29,7 +32,7 @@ class Base(DeclarativeBase):
             stmt, options = select(cls), None
             if cls.__name__ in mappings:
                 options = mappings[cls.__name__](cls)
-                stmt = stmt.options(options)
+                stmt = stmt.options(*options)
 
             result = await session.execute(stmt)
             if options:
@@ -53,15 +56,5 @@ class Base(DeclarativeBase):
 async def init_database():
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-
-
-
-
-
-
-
-
-
-
 
 

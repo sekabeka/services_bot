@@ -91,7 +91,7 @@ SERVICE_TEMPLATE_LIST = """
 
 SERVICE_EMPLOYEE_TEMPLATE_LIST = """
 <b>Мастер</b> <i>{{item.lastname}} {{item.firstname}}</i> 🙎‍♂️
-<b>Цена</b> <i>{{item.price}} рублей</i> 💰
+<b>Цена</b> {{item.price}} рублей 💰
 {% if item.description %}
 
 <b>Описание</b> 💬
