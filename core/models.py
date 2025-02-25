@@ -10,12 +10,22 @@ from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 
 from core.database import async_session_factory, Base
+from settings import SALON_ID
 
+class Salon(Base):
+    __tablename__ = "salons"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[Optional[str]]
+
+    def __repr__(self):
+        return f"Salon(title={self.title!r}"
 
 class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    salon: Mapped[int] = mapped_column(ForeignKey("salons.id"), default=SALON_ID)
     firstname: Mapped[Optional[str]] = mapped_column(String(64))
     lastname: Mapped[Optional[str]] = mapped_column(String(64))
     bookings: Mapped[List["Booking"]] = relationship(back_populates="user")
@@ -28,7 +38,7 @@ class User(Base):
     async def get_or_create(cls, tg_id, **kwargs):
         async with async_session_factory() as session:
             result = await session.execute(
-                select(cls).filter(cls.tg_id == tg_id)
+                select(cls).filter(cls.tg_id == tg_id, cls.salon == SALON_ID)
             )
             user = result.scalars().first()
             if user:
@@ -45,6 +55,7 @@ class Employee(Base):
     __tablename__ = "employees"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    salon: Mapped[int] = mapped_column(ForeignKey("salons.id"), default=SALON_ID)
     firstname: Mapped[str] = mapped_column(String(64))
     lastname: Mapped[str] = mapped_column(String(64))
     username: Mapped[Optional[str]]
@@ -67,6 +78,7 @@ class Service(Base):
     __tablename__ = "services"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    salon: Mapped[int] = mapped_column(ForeignKey("salons.id"), default=SALON_ID)
     title: Mapped[str] = mapped_column(String(64))
     duration: Mapped[int] = mapped_column()
     description: Mapped[Optional[str]]
@@ -85,6 +97,7 @@ class Booking(Base):
     __tablename__ = "bookings"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    salon: Mapped[int] = mapped_column(ForeignKey("salons.id"), default=SALON_ID)
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"))
     employee: Mapped[Employee] = relationship(back_populates="bookings")
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
@@ -100,7 +113,8 @@ class Booking(Base):
             query = select(cls) \
                 .filter(
                     (cls.user_id == user_id) | (cls.employee_id == employee_id),
-                    func.DATE(cls.date) == date
+                    func.DATE(cls.date) == date,
+                    cls.salon == SALON_ID
                 )
             result = await session.execute(query)
             return result.scalars().all()
@@ -124,6 +138,7 @@ class Booking(Base):
 class EmployeeServices(Base):
     __tablename__ = "employee_services"
 
+    salon: Mapped[int] = mapped_column(ForeignKey("salons.id"), default=SALON_ID)
     employee_id: Mapped[int] = mapped_column(
         ForeignKey("employees.id"), primary_key=True
     )

@@ -2,18 +2,18 @@ import os
 import pytz
 
 from aiogram import types
-from datetime import time, timezone
+from datetime import time
 from dotenv import load_dotenv
 
 load_dotenv()
 
 START_TIME_OF_WORK, END_TIME_OF_WORK = time(9, 0), time(21, 0)
+SALON_ID = 1
+
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
-OWNER = 871881605
 
-DATABASE = "data/database.db"
-CELERY_BROKER_URL = "redis://localhost:6379/"
 TIMEZONE = pytz.timezone("Asia/Tomsk")
 
 COMMANDS = [
@@ -34,6 +34,4 @@ COMMANDS = [
         description="Помощь"
     ),
 ]
-BOT_NAME = "MasterNameBOT"
-BOT_DESCRIPTION = "Помощник мастера \"...\". user-friendly interface."
-BOT_SHORT_DESCRIPTION = "Помощник для записи клиентов и управлениями их бронированиями. MVP. user-friendly."
+

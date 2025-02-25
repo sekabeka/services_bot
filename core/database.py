@@ -1,9 +1,11 @@
-from sqlalchemy.ext.asyncio import(
+from sqlalchemy.ext.asyncio import (
     create_async_engine,
     async_sessionmaker,
 )
+
 from sqlalchemy.orm import DeclarativeBase, joinedload
 from sqlalchemy import select
+from settings import SALON_ID, DATABASE_URL
 
 mappings = {
     "Employee": lambda cls: (joinedload(cls.services)),
@@ -12,8 +14,6 @@ mappings = {
         joinedload(cls.employee_associations)
     )
 }
-
-DATABASE_URL = "sqlite+aiosqlite:///data/database.db"
 
 async_engine = create_async_engine(
     DATABASE_URL, echo=True
@@ -32,7 +32,7 @@ class Base(DeclarativeBase):
             stmt, options = select(cls), None
             if cls.__name__ in mappings:
                 options = mappings[cls.__name__](cls)
-                stmt = stmt.options(*options)
+                stmt = stmt.options(*options).filter(cls.salon == SALON_ID)
 
             result = await session.execute(stmt)
             if options:

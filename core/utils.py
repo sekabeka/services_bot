@@ -9,7 +9,7 @@ from core.bot import bot
 from core.database import async_session_factory
 from core.models import Booking, Employee, User
 from core.templates import NOTIFY_TEMPLATE_FOR_EMPLOYEE
-from settings import START_TIME_OF_WORK, END_TIME_OF_WORK
+from settings import START_TIME_OF_WORK, END_TIME_OF_WORK, SALON_ID
 
 
 async def get_available_bookings(booking_date, duration, employee_id):
@@ -61,7 +61,8 @@ async def get_bookings_for_notifications(session=None):
         .filter(
             Booking.date <= (_datetime + timedelta(days=1)),
             Booking.date >= _datetime,
-            Booking.notified == False
+            Booking.notified == False,
+            Booking.salon == SALON_ID
         )
     )
     result = await session.execute(query)
@@ -87,7 +88,8 @@ async def get_employees_with_bookings():
             select(Employee)
             .join(Booking)
             .filter(
-                func.DATE(Booking.date) == datetime.now().date()
+                func.DATE(Booking.date) == datetime.now().date(),
+                Employee.salon == SALON_ID
             )
             .options(
                 joinedload(Employee.bookings)
@@ -102,7 +104,8 @@ async def fetch_bookings(user_id):
         query = (
             select(Employee)
             .filter(
-                Employee.tg_id == user_id
+                Employee.tg_id == user_id,
+                Employee.salon == SALON_ID
             )
         )
         employee = (await session.execute(query)).scalars().first()
@@ -116,7 +119,8 @@ async def fetch_bookings(user_id):
                 )
                 .filter(
                     Booking.employee.has(Employee.tg_id == employee.tg_id),
-                    Booking.date >= datetime.now()
+                    Booking.date >= datetime.now(),
+                    Booking.salon == SALON_ID
                 )
                 .order_by(Booking.date)
             )
@@ -130,7 +134,8 @@ async def fetch_bookings(user_id):
                 )
                 .filter(
                     Booking.user.has(User.tg_id == user_id),
-                    Booking.date >= datetime.now()
+                    Booking.date >= datetime.now(),
+                    Booking.salon == SALON_ID
                 )
                 .order_by(Booking.date)
             )
