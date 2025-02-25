@@ -8,6 +8,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.postgresql import BIGINT
 
 from core.database import async_session_factory, Base
 from settings import SALON_ID
@@ -28,11 +29,11 @@ class User(Base):
     salon: Mapped[int] = mapped_column(ForeignKey("salons.id"), default=SALON_ID)
     firstname: Mapped[Optional[str]] = mapped_column(String(64))
     lastname: Mapped[Optional[str]] = mapped_column(String(64))
+    tg_id: Mapped[Optional[int]] = mapped_column(BIGINT)
     bookings: Mapped[List["Booking"]] = relationship(back_populates="user")
     username: Mapped[Optional[str]]
     email: Mapped[Optional[str]]
     phone: Mapped[Optional[str]]
-    tg_id: Mapped[Optional[int]]
 
     @classmethod
     async def get_or_create(cls, tg_id, **kwargs):
@@ -58,10 +59,10 @@ class Employee(Base):
     salon: Mapped[int] = mapped_column(ForeignKey("salons.id"), default=SALON_ID)
     firstname: Mapped[str] = mapped_column(String(64))
     lastname: Mapped[str] = mapped_column(String(64))
+    tg_id: Mapped[Optional[int]] = mapped_column(BIGINT)
     username: Mapped[Optional[str]]
     email: Mapped[Optional[str]]
     phone: Mapped[Optional[str]]
-    tg_id: Mapped[Optional[int]]
     description: Mapped[Optional[str]]
     services: Mapped[List["Service"]] = relationship(
         secondary="employee_services", back_populates="employees"
